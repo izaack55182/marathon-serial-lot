@@ -30,19 +30,9 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
 	{
 		title: 'Application',
 		items: [
-			{ label: 'Dashboard', href: '/c/dashboard', icon: 'layout-dashboard' },
-			{ label: 'Customers', href: '/c/customers', icon: 'users' },
-			{ label: 'Users', href: '/c/users', icon: 'shield' },
-			{ label: 'Accounting', href: '/c/accounting', icon: 'calculator' },
-			{ label: 'Analytics', href: '/c/analytics', icon: 'chart-spline' },
+			{ label: 'Consultas', href: '/c/consultas', icon: 'search' },
 		],
 	},
-	{
-		title: 'System',
-		items: [
-			{ label: 'Settings', href: '/c/settings', icon: 'settings' },
-		]
-	}
 ]
 
 export default function AppSidebar({ className, ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -54,11 +44,11 @@ export default function AppSidebar({ className, ...props }: React.ComponentProps
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton size="lg" className="hover:bg-transparent cursor-pointer h-12 px-0 rounded-md">
-							<div className="size-7 rounded-md bg-blue-600 flex items-center justify-center text-white shadow-sm shrink-0">
-								<Icon name="layers" className="size-4 text-white" />
+							<div className="h-7 w-auto flex items-center justify-center shrink-0">
+								<img src="/images/logo/marathon-group-logo.png" alt="Marathon" className="h-full w-auto object-contain rounded-sm" />
 							</div>
 							<div className="flex flex-col gap-0 leading-none overflow-hidden ml-2">
-								<span className="font-semibold text-[14.5px] text-foreground truncate">Acme Inc</span>
+								<span className="font-semibold text-[14.5px] text-foreground truncate">Marathon Group</span>
 								<span className="text-[12px] text-muted-foreground truncate">Enterprise</span>
 							</div>
 							<Icon name="chevron-down" className="ml-auto size-4 text-muted-foreground/70 shrink-0" />
@@ -126,19 +116,20 @@ export default function AppSidebar({ className, ...props }: React.ComponentProps
 
 			<SidebarFooter>
 				<SidebarMenu>
-					<SidebarMenuItem className="flex items-center gap-2 pt-2 border-t border-sidebar-border/30">
-						<SidebarMenuButton size="lg" className="flex-1 px-0 hover:bg-transparent data-[state=open]:bg-transparent transition-colors cursor-pointer">
-							<div className="size-8 rounded-full overflow-hidden border border-primary/20 bg-primary/10 flex items-center justify-center shrink-0">
-								<img src="https://ui.shadcn.com/avatars/shadcn.jpg" alt="User" />
+					<SidebarMenuItem className="flex flex-col gap-3 pt-4 pb-2 border-t border-sidebar-border/30">
+						<SidebarMenuButton size="lg" className="w-full px-0 hover:bg-transparent data-[state=open]:bg-transparent transition-colors cursor-pointer">
+							<div className="size-8 rounded-full overflow-hidden border-2 border-primary/20 bg-primary/10 flex items-center justify-center shrink-0">
+								<Icon name="users" className="size-4 text-primary" />
 							</div>
 							<div className="flex flex-col gap-0.5 leading-none overflow-hidden text-left ml-2">
-								<span className="font-semibold text-[14.5px] truncate text-foreground">shadcn</span>
-								<span className="text-xs text-muted-foreground truncate">m@example.com</span>
+								<span className="font-bold text-[14px] truncate text-foreground uppercase tracking-tight">Administrador</span>
+								<span className="text-[10px] font-medium text-muted-foreground/60 truncate uppercase">Panel de Control</span>
 							</div>
 							<Icon name="chevrons-up-down" className="ml-auto size-4 text-muted-foreground shrink-0" />
 						</SidebarMenuButton>
 
-						<div className="shrink-0 flex items-center justify-center pl-2">
+						<div className="w-full flex items-center justify-between px-1">
+							<span className="text-xs font-medium text-muted-foreground">Tema visual</span>
 							<ColorSchemeSwitch />
 						</div>
 					</SidebarMenuItem>

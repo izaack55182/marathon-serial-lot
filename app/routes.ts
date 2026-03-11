@@ -1,19 +1,13 @@
-import { layout, prefix, type RouteConfig, route } from '@react-router/dev/routes'
-import { accountingRoutes } from './features/accounting/routes'
-import { analyticsRoutes } from './features/analytics/routes'
+import { index, layout, prefix, type RouteConfig, route } from '@react-router/dev/routes'
 import { coreRoutes } from './features/core/routes'
-import { crmRoutes } from './features/crm/routes'
 import { inventoryRoutes } from './features/inventory/routes'
-import { invoicingRoutes } from './features/invoicing/routes'
-// Importamos las rutas de las features
-import { marketingRoutes } from './features/marketing/routes'
 import { securityRoutes } from './features/security/routes'
-import { settingsRoutes } from './features/settings/routes'
-import { userRoutes } from './features/user/routes'
 
 export default [
-	// 1. PUBLIC / MARKETING
-	...marketingRoutes,
+	// REDIRECTS
+	index('routes/home-redirect.tsx', { id: 'home-root-redirect' }),
+
+	// 1. PUBLIC / MARKETING (Disabled)
 
 	// 2. AUTHENTICATION (SECURITY)
 	...securityRoutes,
@@ -21,14 +15,9 @@ export default [
 	// 3. APPLICATION (CENTRALIZED)
 	...prefix('c', [
 		layout('routes/layout/layout-app.tsx', [
+			index('routes/home-redirect.tsx', { id: 'app-root-redirect' }),
 			...coreRoutes,
-			...crmRoutes,
-			...userRoutes,
-			...settingsRoutes,
-			...accountingRoutes,
 			...inventoryRoutes,
-			...invoicingRoutes,
-			...analyticsRoutes,
 		]),
 	]),
 

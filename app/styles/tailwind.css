@@ -192,8 +192,8 @@
 	--popover: oklch(1 0 0);
 	--popover-foreground: oklch(0.1 0 0);
 
-	/* PRIMARY - Deep Black */
-	--primary: oklch(0 0 0);
+	/* PRIMARY - Red */
+	--primary: oklch(0.6 0.25 25);
 	--primary-foreground: oklch(1 0 0);
 
 	/* SECONDARY - Very Light Gray */
