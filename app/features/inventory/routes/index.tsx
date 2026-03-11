@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
 import {
 	Table,
@@ -24,16 +25,19 @@ import {
 } from '@/components/ui/sheet'
 import ItemQRCode from '../components/item-qr-code'
 import { generateInventoryPDF } from '../utils/pdf-generator'
+import { getServerEnv } from '@/utils/env.server'
+import { toast } from 'sonner'
 
 interface SAPItem {
-	ItemCode: string
-	ItemName: string
-	U_Sucursal?: string
-	U_Departamento?: string
-	U_Usuario?: string
-	U_Tipo?: string
-	U_Color?: string
-	U_Serie?: string
+	NodeRecepción: string
+	NodeInventario: string
+	Sucursal: string
+	LoteSerie: string
+	Almacén: string
+	Ubicación: string
+	UM: string
+	CantidadaRecibir?: number
+	Type_3: string
 }
 
 interface ODataResponse {
@@ -41,105 +45,61 @@ interface ODataResponse {
 	value: SAPItem[]
 }
 
-const MOCK_DATA: SAPItem[] = [
-	{
-		ItemCode: 'TMP-8d16cb94',
-		ItemName: 'OPS-I7 Modulo OPS para pantalla interactiva',
-		U_Sucursal: 'LA HARINERA',
-		U_Departamento: 'SALA DE JUNTAS 1',
-		U_Usuario: 'TODOS LOS USUARIOS',
-		U_Tipo: 'VIDEOCONFERENCIAS',
-		U_Color: 'NEGRO',
-		U_Serie: 'OSOPSI711L702745J'
-	},
-	{
-		ItemCode: 'TMP-ebca886f',
-		ItemName: 'SILLA EJECUTIVA - BOCONCEPT',
-		U_Sucursal: 'LA HARINERA',
-		U_Departamento: 'SALA DE JUNTAS 1',
-		U_Usuario: 'TODOS LOS USUARIOS',
-		U_Tipo: 'PLASTICO-METAL',
-		U_Color: 'BLANCO',
-		U_Serie: 'SIN SERIE'
-	}
-]
 
 export async function loader({ request }: Route.LoaderArgs) {
-	// Para pruebas, devolvemos MOCK_DATA si no hay URL real
-	const odataUrl = 'https://tu-api-sap.com/b1s/v1/Items?$select=ItemCode,ItemName&$top=50'
+	const url = new URL(request.url)
+	const q = url.searchParams.get('q') || 'QRC04269'
+	const odataUrl = `https://acumatica.marathongroup.mx/MarathonDB/OData/MARATHON/Recepciones-Lotes-Detalle?$filter=NodeRecepci%C3%B3n%20eq%20%27${q}%27`
+
+	const { ACUMATICA_USERNAME, ACUMATICA_PASSWORD } = getServerEnv()
 
 	try {
-		// Mockeamos la respuesta por ahora si la URL es la de ejemplo
-		if (odataUrl.includes('tu-api-sap.com')) {
-			return data({ items: MOCK_DATA })
+		if (!ACUMATICA_USERNAME || !ACUMATICA_PASSWORD) {
+			console.warn("⚠️ ACUMATICA_USERNAME o ACUMATICA_PASSWORD no están definidos en .env")
+			return data({ items: [] })
 		}
+
+		// Usamos Buffer para mayor compatibilidad en el servidor (Node/Bun)
+		const auth = Buffer.from(`${ACUMATICA_USERNAME}:${ACUMATICA_PASSWORD}`).toString('base64')
 
 		const response = await fetch(odataUrl, {
 			method: 'GET',
 			headers: {
 				'Accept': 'application/json',
+				'Authorization': `Basic ${auth}`,
+				'Content-Type': 'application/json'
 			}
 		})
+
 		if (!response.ok) {
-			throw new Error("Error de conexion")
+			if (response.status === 401) {
+				console.error("❌ Error 401: Credenciales inválidas. Revisa tu archivo .env")
+			}
+			const errorText = await response.text().catch(() => "No error body")
+			console.error(`Error OData API (${response.status}):`, errorText)
+			return data({ items: [], error: `Error ${response.status}` })
 		}
+
 		const result: ODataResponse = await response.json()
 		return data({ items: result.value || [] })
 	} catch (error) {
-		console.log("Error en el Loader OData, usando fallback", error)
-		return data({ items: MOCK_DATA })
+		console.error("🔥 Error crítico en el Loader OData:", error)
+		return data({ items: [] })
 	}
 }
 
-const OLD_MOCK_DATA = [
-	{
-		id: '1',
-		name: 'OPS-I7 Modulo OPS para pantalla interactiva OneScreen con proce...',
-		description: 'ONE SCREEN OPS-I7 OPS i7',
-		sucursal: 'LA HARINERA',
-		depto: 'SALA DE JUNTAS 1',
-		usuario: 'TODOS LOS USUARIOS DE LA HARINERA',
-		codigo: 'TMP-8d16cb94',
-		tipo: 'VIDEOCONFERENCIAS',
-		color: 'NEGRO',
-		serie: 'OSOPSI711L702745J',
-		status: 'active'
-	},
-	{
-		id: '2',
-		name: 'SILLA EJECUTIVA',
-		description: 'BOCONCEPT SIN MODELO',
-		sucursal: 'LA HARINERA',
-		depto: 'SALA DE JUNTAS 1',
-		usuario: 'TODOS LOS USUARIOS DE LA HARINERA',
-		codigo: 'TMP-ebca886f',
-		tipo: 'PLASTICO-METAL',
-		color: 'BLANCO',
-		serie: 'SIN SERIE',
-		status: 'active'
-	},
-	{
-		id: '3',
-		name: 'SILLA EJECUTIVA',
-		description: 'BOCONCEPT SIN MODELO',
-		sucursal: 'LA HARINERA',
-		depto: 'SALA DE JUNTAS 1',
-		usuario: 'TODOS LOS USUARIOS DE LA HARINERA',
-		codigo: 'TMP-81a8f1ac',
-		tipo: 'PLASTICO-METAL',
-		color: 'BLANCO',
-		serie: 'SIN SERIE',
-		status: 'active'
-	},
-]
-
 export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 	const { items } = loaderData
+	const [searchParams, setSearchParams] = useSearchParams()
+	const navigate = useNavigate()
 	const [open, setOpen] = React.useState(false)
+	const [searchValue, setSearchValue] = React.useState('')
+	const currentQuery = searchParams.get('q') || ''
+
 	const [selectedRows, setSelectedRows] = React.useState<Record<string, boolean>>({})
 
-	const isAllSelected = items.length > 0 && items.every(item => selectedRows[item.ItemCode])
-	const isSomeSelected = items.some(item => selectedRows[item.ItemCode]) && !isAllSelected
+	const isAllSelected = items.length > 0 && items.every(item => selectedRows[item.LoteSerie])
+	const isSomeSelected = items.some(item => selectedRows[item.LoteSerie]) && !isAllSelected
 
 	const toggleAll = () => {
 		if (isAllSelected) {
@@ -147,7 +107,7 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 		} else {
 			const all: Record<string, boolean> = {}
 			items.forEach(item => {
-				all[item.ItemCode] = true
+				all[item.LoteSerie] = true
 			})
 			setSelectedRows(all)
 		}
@@ -177,18 +137,38 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 		return () => document.removeEventListener('keydown', down)
 	}, [])
 
+	// Notificar si no hay resultados
+	React.useEffect(() => {
+		if (currentQuery && items.length === 0) {
+			toast.error(`No se encontraron resultados para "${currentQuery}"`, {
+				description: 'Verifique el código de recepción e intente de nuevo.',
+				duration: 5000,
+			})
+		}
+	}, [currentQuery, items.length])
+
 	return (
 		<div className="flex flex-col min-h-screen bg-background">
 			{/* Command Dialog */}
 			<CommandDialog open={open} onOpenChange={setOpen}>
-				<CommandInput placeholder="Type a command or search..." />
+				<CommandInput
+					placeholder="Ingrese código de recepción (Ej: QRC04269) y presione Enter..."
+					value={searchValue}
+					onValueChange={setSearchValue}
+					onKeyDown={(e) => {
+						if (e.key === 'Enter' && searchValue.trim()) {
+							setOpen(false)
+							navigate(`?q=${searchValue.trim()}`)
+						}
+					}}
+				/>
 				<CommandList>
-					<CommandEmpty>No results found.</CommandEmpty>
+					<CommandEmpty>Presione Enter para buscar "{searchValue}" en Acumatica.</CommandEmpty>
 					<CommandGroup heading="Artículos">
 						{items.map((item) => (
-							<CommandItem key={item.ItemCode} onSelect={() => setOpen(false)}>
+							<CommandItem key={item.LoteSerie} onSelect={() => setOpen(false)}>
 								<Icon name="package" className="mr-2 h-4 w-4" />
-								<span>{item.ItemName}</span>
+								<span>{item.LoteSerie} - {item.Type_3}</span>
 							</CommandItem>
 						))}
 					</CommandGroup>
@@ -216,7 +196,7 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 								<Icon name="search" className="size-5 stroke-[2]" />
 							</div>
 							<div className="w-full bg-muted/40 border border-muted-foreground/10 rounded-2xl pl-12 pr-14 py-3.5 text-sm font-medium text-foreground transition-all hover:bg-muted/60 hover:border-muted-foreground/20 shadow-sm whitespace-nowrap overflow-hidden text-ellipsis">
-								Buscar activos...
+								{currentQuery ? `Buscar: ${currentQuery}` : 'Buscar activos por NodeRecepción...'}
 							</div>
 							<div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
 								<kbd className="flex h-5 select-none items-center gap-1 rounded bg-background border border-border px-1.5 font-mono text-[10px] font-medium text-muted-foreground shadow-sm">
@@ -227,16 +207,16 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 					</div>
 
 					<div className="flex items-center justify-end gap-3 lg:col-span-1">
-						{Object.keys(selectedRows).length > 0 && (
+						{Object.values(selectedRows).some(Boolean) && (
 							<Button
 								onClick={() => {
-									const selectedItemsData = items.filter(i => selectedRows[i.ItemCode])
+									const selectedItemsData = items.filter(i => selectedRows[i.LoteSerie])
 									generateInventoryPDF(selectedItemsData)
 								}}
 								className="bg-primary hover:bg-primary/90 active:scale-95 active:bg-primary/80 text-white rounded-xl h-11 px-6 shadow-lg shadow-primary/20 transition-all font-bold text-xs uppercase tracking-wider animate-in fade-in slide-in-from-right-4"
 							>
 								<Icon name="file-down" className="mr-2 size-4 text-white" />
-								Exportar PDF ({Object.keys(selectedRows).length})
+								Exportar PDF ({Object.values(selectedRows).filter(Boolean).length})
 							</Button>
 						)}
 					</div>
@@ -258,58 +238,53 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 												onCheckedChange={toggleAll}
 											/>
 										</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground py-5 min-w-[300px]">Mobiliario / Artículo</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground text-right px-8">Sucursal</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground text-right px-8">Depto.</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-8">Usuario</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">Código</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground text-center">Tipo</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground text-center">Color</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-8">Serie</TableHead>
+										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground py-5">Lote / Serie</TableHead>
+										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Node Inv.</TableHead>
+										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Sucursal</TableHead>
+										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Almacén</TableHead>
+										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4 text-center">Ubicación</TableHead>
+										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4 text-center">Cant. Recibir</TableHead>
+										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">UM</TableHead>
+										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Descripción</TableHead>
 										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground text-center w-[80px]">Acción</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
 									{items.map((item) => {
-										const isSelected = !!selectedRows[item.ItemCode]
+										const isSelected = !!selectedRows[item.LoteSerie]
 										return (
 											<TableRow
-												key={item.ItemCode}
+												key={item.LoteSerie}
 												className={cn(
 													"group border-b border-border/40 transition-all cursor-pointer",
 													isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/30"
 												)}
-												onClick={() => toggleRow(item.ItemCode)}
+												onClick={() => toggleRow(item.LoteSerie)}
 											>
 												<TableCell className="py-5 px-6 text-center" onClick={(e) => e.stopPropagation()}>
 													<Checkbox
 														className="rounded-md h-4.5 w-4.5"
 														checked={isSelected}
-														onCheckedChange={() => toggleRow(item.ItemCode)}
+														onCheckedChange={() => toggleRow(item.LoteSerie)}
 													/>
 												</TableCell>
-												<TableCell className="py-5 max-w-[280px] overflow-hidden">
-													<div className="flex flex-col gap-0.5 w-full">
-														<span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-tight uppercase truncate">{item.ItemName}</span>
-														<span className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-tight truncate">{item.ItemCode}</span>
-													</div>
+												<TableCell className="py-5 px-4">
+													<span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-tight uppercase font-mono">{item.LoteSerie}</span>
 												</TableCell>
-												<TableCell className="text-[11px] font-bold text-muted-foreground text-right px-8 uppercase tracking-tighter whitespace-nowrap">{item.U_Sucursal || 'N/A'}</TableCell>
-												<TableCell className="text-[11px] font-bold text-muted-foreground text-right px-8 uppercase tracking-tighter whitespace-nowrap">{item.U_Departamento || 'N/A'}</TableCell>
-												<TableCell className="text-[11px] font-bold text-foreground/70 px-8 uppercase truncate max-w-[200px]">{item.U_Usuario || 'N/A'}</TableCell>
-												<TableCell>
-													<code className="bg-muted text-[10px] font-bold text-muted-foreground px-2 py-0.5 rounded uppercase">
-														{item.ItemCode}
-													</code>
+												<TableCell className="text-[11px] font-bold text-muted-foreground px-4 uppercase tracking-tighter whitespace-nowrap">{item.NodeInventario}</TableCell>
+												<TableCell className="text-[11px] font-bold text-muted-foreground px-4 uppercase tracking-tighter whitespace-nowrap">{item.Sucursal}</TableCell>
+												<TableCell className="text-[11px] font-bold text-foreground/70 px-4 uppercase truncate">{item.Almacén}</TableCell>
+												<TableCell className="text-[11px] font-bold text-foreground/70 px-4 text-center uppercase tracking-tighter">
+													<code className="bg-muted px-2 py-0.5 rounded">{item.Ubicación}</code>
 												</TableCell>
-												<TableCell className="text-[11px] font-bold text-foreground/70 text-center uppercase tracking-tighter">{item.U_Tipo || 'N/A'}</TableCell>
-												<TableCell className="text-center px-4">
-													<div className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-muted/60 text-[9px] font-black uppercase text-muted-foreground tracking-tighter">
-														{item.U_Color || 'N/A'}
-													</div>
+												<TableCell className="text-center px-4 font-mono font-bold text-primary">
+													{item.CantidadaRecibir}
 												</TableCell>
-												<TableCell className="text-[11px] font-mono font-bold text-foreground tracking-tight px-8">
-													{item.U_Serie || 'SIN SERIE'}
+												<TableCell className="text-[11px] font-bold text-foreground tracking-tight px-4 text-center">
+													{item.UM}
+												</TableCell>
+												<TableCell className="text-[11px] font-medium text-muted-foreground/80 px-4 whitespace-nowrap">
+													{item.Type_3}
 												</TableCell>
 												<TableCell className="text-center px-0">
 													<Button
@@ -350,17 +325,17 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 							<div className="space-y-4">
 								<div className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-3">
 									<div>
-										<p className="text-[10px] font-black uppercase text-muted-foreground/50 tracking-widest mb-1">Nombre del Artículo</p>
-										<p className="text-sm font-bold text-foreground leading-tight">{itemToView.ItemName}</p>
+										<p className="text-[10px] font-black uppercase text-muted-foreground/50 tracking-widest mb-1">Descripción / Tipo</p>
+										<p className="text-sm font-bold text-foreground leading-tight">{itemToView.Type_3}</p>
 									</div>
 									<div className="grid grid-cols-2 gap-4">
 										<div>
-											<p className="text-[10px] font-black uppercase text-muted-foreground/50 tracking-widest mb-1">Código SAP</p>
-											<p className="text-xs font-mono font-bold text-primary">{itemToView.ItemCode}</p>
+											<p className="text-[10px] font-black uppercase text-muted-foreground/50 tracking-widest mb-1">Cód. Recepción</p>
+											<p className="text-xs font-mono font-bold text-primary">{itemToView.NodeRecepción}</p>
 										</div>
 										<div>
-											<p className="text-[10px] font-black uppercase text-muted-foreground/50 tracking-widest mb-1">Serie</p>
-											<p className="text-xs font-mono font-bold text-foreground">{itemToView.U_Serie || 'N/A'}</p>
+											<p className="text-[10px] font-black uppercase text-muted-foreground/50 tracking-widest mb-1">Lote / Serie (QR)</p>
+											<p className="text-xs font-mono font-bold text-foreground">{itemToView.LoteSerie}</p>
 										</div>
 									</div>
 								</div>
@@ -368,17 +343,28 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 								<div className="grid grid-cols-2 gap-3">
 									<div className="p-3 rounded-lg bg-muted text-center">
 										<p className="text-[9px] font-bold text-muted-foreground/60 uppercase mb-0.5">Sucursal</p>
-										<p className="text-[11px] font-bold text-foreground truncate">{itemToView.U_Sucursal}</p>
+										<p className="text-[11px] font-bold text-foreground truncate">{itemToView.Sucursal}</p>
 									</div>
 									<div className="p-3 rounded-lg bg-muted text-center">
-										<p className="text-[9px] font-bold text-muted-foreground/60 uppercase mb-0.5">Departamento</p>
-										<p className="text-[11px] font-bold text-foreground truncate">{itemToView.U_Departamento}</p>
+										<p className="text-[9px] font-bold text-muted-foreground/60 uppercase mb-0.5">Almacén / Ubic.</p>
+										<p className="text-[11px] font-bold text-foreground truncate">{itemToView.Almacén} - {itemToView.Ubicación}</p>
+									</div>
+								</div>
+
+								<div className="p-3 rounded-lg bg-primary/5 border border-primary/10 flex justify-between items-center text-center">
+									<div className="flex-1 border-r border-primary/10">
+										<p className="text-[9px] font-bold text-primary/60 uppercase mb-0.5">Cantidad</p>
+										<p className="text-sm font-black text-primary">{itemToView.CantidadaRecibir}</p>
+									</div>
+									<div className="flex-1">
+										<p className="text-[9px] font-bold text-primary/60 uppercase mb-0.5">U. Medida</p>
+										<p className="text-sm font-black text-primary">{itemToView.UM}</p>
 									</div>
 								</div>
 							</div>
 
 							<div className="pt-4">
-								<ItemQRCode itemId={itemToView.ItemCode} itemTitle={itemToView.ItemName} />
+								<ItemQRCode itemId={itemToView.LoteSerie} itemTitle={itemToView.Type_3} />
 							</div>
 						</div>
 					)}

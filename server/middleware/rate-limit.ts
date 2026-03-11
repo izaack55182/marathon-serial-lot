@@ -18,7 +18,7 @@ type RateLimit = Parameters<typeof rateLimiter>[0]
 
 const rateLimitDefault: RateLimit = {
 	windowMs: 60 * 1000, // 1 minute
-	limit: 1000 * maxMultiple, // limit each IP to 1000 requests per windowMs
+	limit: 100 * maxMultiple, // limit each IP to 100 requests per windowMs (Requested by user)
 	keyGenerator: (c: Context) => c.get('fly-client-ip') ?? c.req.header('cf-connecting-ip'),
 	standardHeaders: true,
 	// Malicious users can spoof their IP address which means we should not default

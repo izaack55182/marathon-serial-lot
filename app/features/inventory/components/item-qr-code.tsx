@@ -30,7 +30,7 @@ export default function ItemQRCode({ itemId, itemTitle }: ItemQRCodeProps) {
                     width: 300,
                     height: 300,
                     type: "canvas",
-                    data: itemId, // Solo el ID del item (lote/serie)
+                    data: `LT:${itemId}`, // Formato solicitado: LT:Lote/Serie
                     margin: 8,
                     dotsOptions: {
                         color: "#c8102e",

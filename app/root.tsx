@@ -1,4 +1,4 @@
-﻿import {
+import {
 	Links,
 	Meta,
 	type MetaFunction,
@@ -20,6 +20,9 @@ const iconsHref = '/icons/sprite.svg'
 
 // ROUTES
 import { useTheme } from './routes/resource/color-scheme'
+
+// UI
+import { Toaster } from './components/ui/sonner'
 
 // CORE
 import type { Route } from './+types/root'
@@ -120,6 +123,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
 	return (
 		<Document nonce={nonce} env={ENV} colorScheme={theme} allowIndexing={allowIndexing}>
 			<Outlet />
+			<Toaster />
 			<EpicProgress />
 		</Document>
 	)
