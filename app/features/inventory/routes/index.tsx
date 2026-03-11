@@ -48,49 +48,29 @@ interface ODataResponse {
 export async function loader({ request, context }: Route.LoaderArgs) {
 	const url = new URL(request.url)
 	const q = url.searchParams.get('q') || 'QRC04269'
-	const odataUrl = `https://acumatica.marathongroup.mx/MarathonDB/OData/MARATHON/Recepciones-Lotes-Detalle?$filter=NodeRecepci%C3%B3n%20eq%20%27${q}%27`
 
-	// Usamos context.env que viene de Cloudflare de forma segura
-	// Diagnóstico profundo: ¿Qué hay en context?
-	if (!context.env || Object.keys(context.env).length === 0) {
-		console.log("🕵️ TRACE: context no tiene env o está vacío")
-		console.dir({ 
-			contextKeys: Object.keys(context || {}),
-			fullContext: JSON.stringify(context) // Cuidado con datos sensibles, solo para debug temporal
-		})
+	// ✅ context.env ya es el ServerEnv parseado por Zod
+	const { ACUMATICA_USERNAME, ACUMATICA_PASSWORD } = context.env
+
+	if (!ACUMATICA_USERNAME || !ACUMATICA_PASSWORD) {
+		console.warn("⚠️ ACUMATICA_USERNAME o ACUMATICA_PASSWORD no están definidos")
+		return data({ items: [] })
 	}
 
-	const { ACUMATICA_USERNAME, ACUMATICA_PASSWORD } = (context.env || {}) as any
+	const odataUrl = `https://acumatica.marathongroup.mx/MarathonDB/OData/MARATHON/Recepciones-Lotes-Detalle?$filter=NodeRecepci%C3%B3n%20eq%20%27${q}%27`
+	const auth = btoa(`${ACUMATICA_USERNAME}:${ACUMATICA_PASSWORD}`) // btoa en vez de Buffer (Cloudflare Workers)
 
 	try {
-		if (!ACUMATICA_USERNAME || !ACUMATICA_PASSWORD) {
-			console.warn("⚠️ ACUMATICA_USERNAME o ACUMATICA_PASSWORD no están definidos")
-			console.dir({ 
-				hasUser: !!ACUMATICA_USERNAME, 
-				hasPass: !!ACUMATICA_PASSWORD,
-				availableKeys: Object.keys(context.env)
-			})
-			return data({ items: [] })
-		}
-
-		// Usamos Buffer para mayor compatibilidad en el servidor (Node/Bun)
-		const auth = Buffer.from(`${ACUMATICA_USERNAME}:${ACUMATICA_PASSWORD}`).toString('base64')
-
 		const response = await fetch(odataUrl, {
 			method: 'GET',
 			headers: {
 				'Accept': 'application/json',
 				'Authorization': `Basic ${auth}`,
-				'Content-Type': 'application/json'
 			}
 		})
 
 		if (!response.ok) {
-			if (response.status === 401) {
-				console.error("❌ Error 401: Credenciales inválidas. Revisa tu archivo .env")
-			}
-			const errorText = await response.text().catch(() => "No error body")
-			console.error(`Error OData API (${response.status}):`, errorText)
+			console.error(`Error OData API (${response.status})`)
 			return data({ items: [], error: `Error ${response.status}` })
 		}
 
