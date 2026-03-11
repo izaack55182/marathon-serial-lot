@@ -41,10 +41,6 @@ export default defineConfig({
 			},
 		},
 		tailwindcss(),
-		cloudflare({
-			persistState: false,
-			viteEnvironment: { name: 'ssr' },
-		}),
 		tsconfigPaths(),
 		iconsSpritesheet({
 			inputDir: './other/icons',
