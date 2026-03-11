@@ -46,16 +46,22 @@ interface ODataResponse {
 }
 
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, context }: Route.LoaderArgs) {
 	const url = new URL(request.url)
 	const q = url.searchParams.get('q') || 'QRC04269'
 	const odataUrl = `https://acumatica.marathongroup.mx/MarathonDB/OData/MARATHON/Recepciones-Lotes-Detalle?$filter=NodeRecepci%C3%B3n%20eq%20%27${q}%27`
 
-	const { ACUMATICA_USERNAME, ACUMATICA_PASSWORD } = getServerEnv()
+	// Usamos context.env que viene de Cloudflare de forma segura
+	const { ACUMATICA_USERNAME, ACUMATICA_PASSWORD } = context.env
 
 	try {
 		if (!ACUMATICA_USERNAME || !ACUMATICA_PASSWORD) {
-			console.warn("⚠️ ACUMATICA_USERNAME o ACUMATICA_PASSWORD no están definidos en .env")
+			console.warn("⚠️ ACUMATICA_USERNAME o ACUMATICA_PASSWORD no están definidos")
+			console.dir({ 
+				hasUser: !!ACUMATICA_USERNAME, 
+				hasPass: !!ACUMATICA_PASSWORD,
+				availableKeys: Object.keys(context.env)
+			})
 			return data({ items: [] })
 		}
 
