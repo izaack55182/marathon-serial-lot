@@ -25,7 +25,6 @@ import {
 } from '@/components/ui/sheet'
 import ItemQRCode from '../components/item-qr-code'
 import { generateInventoryPDF } from '../utils/pdf-generator'
-import { getServerEnv } from '@/utils/env.server'
 import { toast } from 'sonner'
 
 interface SAPItem {
