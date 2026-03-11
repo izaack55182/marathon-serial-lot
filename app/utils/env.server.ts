@@ -12,8 +12,8 @@ const envSchema = z.object({
 	// SEO
 	ALLOW_INDEXING: z.enum(['true', 'false']).optional(),
 	// ACUMATICA ODATA
-	ACUMATICA_USERNAME: z.string().optional(),
-	ACUMATICA_PASSWORD: z.string().optional(),
+	ACUMATICA_USERNAME: z.string().min(1, "ACUMATICA_USERNAME es requerido"),
+	ACUMATICA_PASSWORD: z.string().min(1, "ACUMATICA_PASSWORD es requerido"),
 })
 
 type ServerEnv = z.infer<typeof envSchema>
@@ -27,7 +27,11 @@ export function initEnv(runtimeEnv?: unknown) {
 	if (parsed.success === false) {
 		// biome-ignore lint/suspicious/noConsole: We want this to be logged
 		console.error('❌ Invalid environment variables:', parsed.error.flatten().fieldErrors)
-		throw new Error('Invalid environment variables')
+		
+		// Debug log para ver qué variables están llegando realmente (sin mostrar valores sensibles)
+		console.log('🔍 Variables disponibles en el entorno:', Object.keys(source as object))
+		
+		throw new Error(`Invalid environment variables: ${JSON.stringify(parsed.error.flatten().fieldErrors)}`)
 	}
 
 	env = parsed.data
