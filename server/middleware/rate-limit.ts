@@ -7,49 +7,40 @@ import { IS_PROD } from '../utils/misc'
 // When running tests or running in development, we want to effectively disable
 // rate limiting because playwright tests are very fast and we don't want to
 // have to wait for the rate limit to reset between tests.
-const getMaxMultiple = () => {
-	const isPlaywright = typeof process !== 'undefined' && !!process.env.PLAYWRIGHT_TEST_BASE_URL
-	return !IS_PROD() || isPlaywright ? 10_000 : 1
-}
-
-const maxMultiple = getMaxMultiple()
-
-type RateLimit = Parameters<typeof rateLimiter>[0]
-
-const rateLimitDefault: RateLimit = {
-	windowMs: 60 * 1000, // 1 minute
-	limit: 100 * maxMultiple, // limit each IP to 100 requests per windowMs (Requested by user)
-	keyGenerator: (c: Context) => c.get('fly-client-ip') ?? c.req.header('cf-connecting-ip'),
-	standardHeaders: true,
-	// Malicious users can spoof their IP address which means we should not default
-	// to trusting req.ip when hosted on Fly.io. However, users cannot spoof Fly-Client-Ip.
-	// When sitting behind a CDN such as cloudflare, replace fly-client-ip with the CDN
-	// specific header such as cf-connecting-ip
-}
 
 let strongestRateLimit: ReturnType<typeof rateLimiter>
 let strongRateLimit: ReturnType<typeof rateLimiter>
 let generalRateLimit: ReturnType<typeof rateLimiter>
-
 // Middleware pour gérer les limitations
 export const rateLimitMiddleware = createMiddleware(async (c, next) => {
-	const maxMultiple = getMaxMultiple()
+	// Inicialización diferida para evitar crashes en el arranque por falta de variables de entorno
+	const isPlaywright = typeof process !== 'undefined' && !!process.env.PLAYWRIGHT_TEST_BASE_URL
+	const maxMultiple = !IS_PROD() || isPlaywright ? 10_000 : 1
 
 	if (!generalRateLimit) {
-		generalRateLimit = rateLimiter(rateLimitDefault)
+		generalRateLimit = rateLimiter({
+			windowMs: 60 * 1000,
+			limit: 100 * maxMultiple,
+			keyGenerator: (c: Context) => c.get('fly-client-ip') ?? c.req.header('cf-connecting-ip'),
+			standardHeaders: true,
+		})
 	}
 
 	if (!strongRateLimit) {
 		strongRateLimit = rateLimiter({
-			...rateLimitDefault,
+			windowMs: 60 * 1000,
 			limit: 100 * maxMultiple,
+			keyGenerator: (c: Context) => c.get('fly-client-ip') ?? c.req.header('cf-connecting-ip'),
+			standardHeaders: true,
 		})
 	}
 
 	if (!strongestRateLimit) {
 		strongestRateLimit = rateLimiter({
-			...rateLimitDefault,
+			windowMs: 60 * 1000,
 			limit: 10 * maxMultiple,
+			keyGenerator: (c: Context) => c.get('fly-client-ip') ?? c.req.header('cf-connecting-ip'),
+			standardHeaders: true,
 		})
 	}
 	const path = c.req.url
