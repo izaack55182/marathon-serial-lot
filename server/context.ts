@@ -2,17 +2,12 @@ import { type Context } from 'hono'
 import { getClientEnv, getServerEnv, initEnv } from '@/utils/env.server'
 
 export const getLoadContext = async (c: Context) => {
-	// initialize the server environment with Cloudflare 
-	console.log('🔑 Raw c.env keys:', Object.keys(c.env || {}))
-	console.log('🔑 Has USERNAME:', !!(c.env as any)?.ACUMATICA_USERNAME)
-
 	const env = initEnv(c.env)
 
 	return {
 		isProductionDeployment: env.APP_ENV === 'production',
 		env,
 		clientEnv: getClientEnv(),
-		// We do not add this to AppLoadContext type because it's not needed in the loaders, but it's used above to handle requests
 		body: c.body,
 	}
 }
