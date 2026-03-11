@@ -2,7 +2,10 @@ import { type Context } from 'hono'
 import { getClientEnv, getServerEnv, initEnv } from '@/utils/env.server'
 
 export const getLoadContext = async (c: Context) => {
-	// initialize the server environment with Cloudflare env
+	// initialize the server environment with Cloudflare 
+	console.log('🔑 Raw c.env keys:', Object.keys(c.env || {}))
+	console.log('🔑 Has USERNAME:', !!(c.env as any)?.ACUMATICA_USERNAME)
+
 	const env = initEnv(c.env)
 
 	return {
