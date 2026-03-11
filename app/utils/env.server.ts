@@ -12,8 +12,8 @@ const envSchema = z.object({
 	// SEO
 	ALLOW_INDEXING: z.enum(['true', 'false']).optional(),
 	// ACUMATICA ODATA
-	ACUMATICA_USERNAME: z.string().min(1, "ACUMATICA_USERNAME es requerido"),
-	ACUMATICA_PASSWORD: z.string().min(1, "ACUMATICA_PASSWORD es requerido"),
+	ACUMATICA_USERNAME: z.string().optional(),
+	ACUMATICA_PASSWORD: z.string().optional(),
 })
 
 type ServerEnv = z.infer<typeof envSchema>

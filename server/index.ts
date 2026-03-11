@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { poweredBy } from 'hono/powered-by'
 import { createMiddleware } from 'hono/factory'
 import { getLoadContext } from './context'
-import { ALLOW_INDEXING } from './utils/misc.ts'
+import { initEnv } from '@/utils/env.server'
 
 import { epicLogger } from './middleware/epic-logger.ts'
 import { removeTrailingSlash } from './middleware/remove-trailing-slash.ts'
@@ -41,15 +41,16 @@ app.use('*', rateLimitMiddleware)
 app.use('*', poweredBy({ serverName: 'CODENITY' }))
 
 // No indexing if configured
-if (!ALLOW_INDEXING()) {
-	app.use(
-		'*',
-		createMiddleware(async (c, next) => {
+app.use(
+	'*',
+	createMiddleware(async (c, next) => {
+		const env = initEnv(c.env)
+		if (env.ALLOW_INDEXING === 'false') {
 			c.header('X-Robots-Tag', 'noindex, nofollow')
-			await next()
-		})
-	)
-}
+		}
+		await next()
+	})
+)
 
 // Export load context for adapter
 export { getLoadContext }
