@@ -51,7 +51,16 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	const odataUrl = `https://acumatica.marathongroup.mx/MarathonDB/OData/MARATHON/Recepciones-Lotes-Detalle?$filter=NodeRecepci%C3%B3n%20eq%20%27${q}%27`
 
 	// Usamos context.env que viene de Cloudflare de forma segura
-	const { ACUMATICA_USERNAME, ACUMATICA_PASSWORD } = context.env
+	// Diagnóstico profundo: ¿Qué hay en context?
+	if (!context.env || Object.keys(context.env).length === 0) {
+		console.log("🕵️ TRACE: context no tiene env o está vacío")
+		console.dir({ 
+			contextKeys: Object.keys(context || {}),
+			fullContext: JSON.stringify(context) // Cuidado con datos sensibles, solo para debug temporal
+		})
+	}
+
+	const { ACUMATICA_USERNAME, ACUMATICA_PASSWORD } = (context.env || {}) as any
 
 	try {
 		if (!ACUMATICA_USERNAME || !ACUMATICA_PASSWORD) {
