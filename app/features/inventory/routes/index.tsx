@@ -47,7 +47,6 @@ interface ODataResponse {
 
 
 export async function loader({ request, context }: Route.LoaderArgs) {
-	// ✅ context.env ya es el ServerEnv parseado por Zod
 	const env = context?.env ?? initEnv()
 	const ACUMATICA_USERNAME = env.ACUMATICA_USERNAME
 	const ACUMATICA_PASSWORD = env.ACUMATICA_PASSWORD
@@ -59,6 +58,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 		return data({
 			items: [],
 			origin: new URL(request.url).origin
+		}, {
+			headers: {
+				"Cache-Control": "public, s-maxage=3600, stale-while-revalidate=60"
+			}
 		})
 	}
 
@@ -209,8 +212,8 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 			<p className="text-muted-foreground max-w-[400px] mb-8">
 				Ingrese un código de recepción de Acumatica para visualizar los detalles y generar códigos QR.
 			</p>
-			<Button 
-				variant="outline" 
+			<Button
+				variant="outline"
 				onClick={() => setOpen(true)}
 				className="rounded-xl px-8 h-12 border-muted-foreground/20 hover:bg-muted/50"
 			>
@@ -240,12 +243,12 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 				/>
 				<CommandList>
 					<CommandEmpty>Presione Enter para buscar "{searchValue}" en Acumatica.</CommandEmpty>
-					
+
 					{recentSearches.length > 0 && (
 						<CommandGroup heading="Búsquedas recientes">
 							{recentSearches.map((s) => (
-								<CommandItem 
-									key={s} 
+								<CommandItem
+									key={s}
 									onSelect={() => {
 										setOpen(false)
 										setSearchValue(s)
