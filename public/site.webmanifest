@@ -1,7 +1,7 @@
 {
-	"name": "Codenity Stack",
-	"short_name": "Codenity",
-	"description": "Codenity Stack is a full-stack web development framework built with React Router, Bun, Cloudflare, and more.",
+	"name": "Marathon Serial Lot",
+	"short_name": "Marathon",
+	"description": "Marathon Serial Lot is an inventory management system for tracking lot/serial numbers.",
 	"start_url": "/",
 	"display": "standalone",
 	"background_color": "#09090b",

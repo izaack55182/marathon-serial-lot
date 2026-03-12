@@ -136,11 +136,11 @@ export default function Users() {
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
-	const origin = data?.origin ?? 'https://codenity-stack.pages.dev'
+	const origin = data?.origin ?? 'https://marathon-serial-lot.pages.dev'
 
 	return getMeta({
 		title: 'Usuarios',
-		description: 'Administración de usuarios en Codenity Stack.',
+		description: 'Administración de usuarios en Marathon.',
 		origin,
 		noIndex: true,
 	})

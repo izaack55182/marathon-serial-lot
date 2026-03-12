@@ -81,7 +81,7 @@ export default function Settings() {
 										Correo Electrónico
 									</div>
 									<div className="h-10 px-3 bg-muted/50 border border-border rounded-lg flex items-center text-sm font-medium">
-										izaack@codenity.com
+										izaack@marathongroup.mx
 									</div>
 								</div>
 							</div>
@@ -99,12 +99,11 @@ export default function Settings() {
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
-	const origin = data?.origin ?? 'https://codenity-stack.pages.dev'
-
+	const origin = data?.origin ?? 'https://marathon-serial-lot.pages.dev'
 	return getMeta({
-		title: 'Configuración',
-		description: 'Administra tus preferencias en Codenity Stack.',
 		origin,
+		title: 'Ajustes',
+		description: 'Administra tus preferencias en Marathon.',
 		noIndex: true,
 	})
 }

@@ -2,3 +2,8 @@ name = "marathon-serial-lot"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "./build/client"
+
+
+[vars]
+NODE_ENV = "production"
+APP_ENV = "production"

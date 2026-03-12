@@ -24,7 +24,7 @@ export function Footer() {
 				<div className="flex flex-col items-center gap-2 text-center">
 					<div className="h-px w-8 bg-border mb-2" />
 					<p className="text-[10px] uppercase tracking-widest text-muted-foreground/40">
-						Codenity Stack © 2026
+						Marathon Group © 2026
 					</p>
 				</div>
 			</div>

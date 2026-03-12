@@ -131,7 +131,7 @@ export default function Dashboard() {
 							{[
 								{
 									name: 'Izaack',
-									email: 'izaack@codenity.com',
+									email: 'izaack@marathongroup.mx',
 									amount: '+$1,999.00',
 									initials: 'IZ',
 								},

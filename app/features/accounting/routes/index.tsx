@@ -7,12 +7,11 @@ export async function loader({ request }: { request: Request }) {
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
-	const origin = data?.origin ?? 'https://codenity-stack.pages.dev'
-
+	const origin = data?.origin ?? 'https://marathon-serial-lot.pages.dev'
 	return getMeta({
-		title: 'Contabilidad',
-		description: 'Gestión financiera en Codenity Stack.',
 		origin,
+		title: 'Contabilidad',
+		description: 'Gestión financiera en Marathon.',
 		noIndex: true,
 	})
 }

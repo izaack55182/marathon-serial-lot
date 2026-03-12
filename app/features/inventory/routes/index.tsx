@@ -14,7 +14,8 @@ import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/utils/misc'
-import { data } from 'react-router'
+import { data, type MetaFunction } from 'react-router'
+import { getMeta } from '@/utils/misc'
 import type { Route } from './+types/index'
 import {
 	Sheet,
@@ -26,7 +27,7 @@ import {
 import ItemQRCode from '../components/item-qr-code'
 import { generateInventoryPDF } from '../utils/pdf-generator'
 import { toast } from 'sonner'
-
+import { initEnv } from '@/utils/env.server'
 interface SAPItem {
 	NodeRecepción: string
 	NodeInventario: string
@@ -46,19 +47,24 @@ interface ODataResponse {
 
 
 export async function loader({ request, context }: Route.LoaderArgs) {
+	// ✅ context.env ya es el ServerEnv parseado por Zod
+	const env = context?.env ?? initEnv()
+	const ACUMATICA_USERNAME = env.ACUMATICA_USERNAME
+	const ACUMATICA_PASSWORD = env.ACUMATICA_PASSWORD
+
 	const url = new URL(request.url)
 	const q = url.searchParams.get('q') || 'QRC04269'
 
-	// ✅ context.env ya es el ServerEnv parseado por Zod
-	const { ACUMATICA_USERNAME, ACUMATICA_PASSWORD } = context.env
-
 	if (!ACUMATICA_USERNAME || !ACUMATICA_PASSWORD) {
 		console.warn("⚠️ ACUMATICA_USERNAME o ACUMATICA_PASSWORD no están definidos")
-		return data({ items: [] })
+		return data({
+			items: [],
+			origin: new URL(request.url).origin
+		})
 	}
 
 	const odataUrl = `https://acumatica.marathongroup.mx/MarathonDB/OData/MARATHON/Recepciones-Lotes-Detalle?$filter=NodeRecepci%C3%B3n%20eq%20%27${q}%27`
-	const auth = btoa(`${ACUMATICA_USERNAME}:${ACUMATICA_PASSWORD}`) // btoa en vez de Buffer (Cloudflare Workers)
+	const auth = btoa(`${ACUMATICA_USERNAME}:${ACUMATICA_PASSWORD}`)
 
 	try {
 		const response = await fetch(odataUrl, {
@@ -71,15 +77,36 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 		if (!response.ok) {
 			console.error(`Error OData API (${response.status})`)
-			return data({ items: [], error: `Error ${response.status}` })
+			return data({
+				items: [],
+				error: `Error ${response.status}`,
+				origin: new URL(request.url).origin
+			})
 		}
 
 		const result: ODataResponse = await response.json()
-		return data({ items: result.value || [] })
+		return data({
+			items: result.value || [],
+			origin: new URL(request.url).origin
+		})
 	} catch (error) {
 		console.error("🔥 Error crítico en el Loader OData:", error)
-		return data({ items: [] })
+		return data({
+			items: [],
+			origin: new URL(request.url).origin
+		})
 	}
+}
+
+export const meta: MetaFunction<typeof loader> = ({ data }) => {
+	const origin = data?.origin ?? 'https://marathon-serial-lot.pages.dev'
+
+	return getMeta({
+		title: 'Consultas',
+		description: 'Consulta de Lote - Serie en Marathon.',
+		origin,
+		noIndex: true,
+	})
 }
 
 export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
@@ -176,9 +203,6 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 						<h1 className="text-4xl font-bold tracking-tight lg:text-5xl text-foreground">
 							Consulta de serie
 						</h1>
-						<p className="text-muted-foreground font-medium text-lg lg:text-xl">
-							Gestión integral de activos.
-						</p>
 					</div>
 
 					<div className="flex justify-center lg:col-span-1">
@@ -190,7 +214,7 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 								<Icon name="search" className="size-5 stroke-[2]" />
 							</div>
 							<div className="w-full bg-muted/40 border border-muted-foreground/10 rounded-2xl pl-12 pr-14 py-3.5 text-sm font-medium text-foreground transition-all hover:bg-muted/60 hover:border-muted-foreground/20 shadow-sm whitespace-nowrap overflow-hidden text-ellipsis">
-								{currentQuery ? `Buscar: ${currentQuery}` : 'Buscar activos por NodeRecepción...'}
+								{currentQuery ? `Buscar: ${currentQuery}` : 'Buscar'}
 							</div>
 							<div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
 								<kbd className="flex h-5 select-none items-center gap-1 rounded bg-background border border-border px-1.5 font-mono text-[10px] font-medium text-muted-foreground shadow-sm">
@@ -209,7 +233,7 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 								}}
 								className="bg-primary hover:bg-primary/90 active:scale-95 active:bg-primary/80 text-white rounded-xl h-11 px-6 shadow-lg shadow-primary/20 transition-all font-bold text-xs uppercase tracking-wider animate-in fade-in slide-in-from-right-4"
 							>
-								<Icon name="file-down" className="mr-2 size-4 text-white" />
+								<Icon name="file-down" className="mr-2 size-4 text-foreground" />
 								Exportar PDF ({Object.values(selectedRows).filter(Boolean).length})
 							</Button>
 						)}

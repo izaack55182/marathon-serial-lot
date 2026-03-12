@@ -37,7 +37,7 @@ export default function Logo({ redirect, className, variant, alt, theme }: LogoP
 			<img
 				decoding="sync"
 				className={cn(logoVariants({ variant }), 'transition-none', className)}
-				alt={alt ? alt : 'Codenity Logo'}
+				alt={alt ? alt : 'Marathon Logo'}
 				src={`/images/logo/codenity-${logoVariant}-${themeSuffix}.svg`}
 				width={variant === 'icon' ? 28 : 160}
 				height={variant === 'icon' ? 28 : 40}

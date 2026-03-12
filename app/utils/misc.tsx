@@ -83,7 +83,7 @@ export function getMeta({
 	image?: string
 	noIndex?: boolean
 }) {
-	const siteName = 'Codenity Stack'
+	const siteName = 'Marathon'
 	const fullTitle = title ? `${title} - ${siteName}` : siteName
 	const fullDescription =
 		description ??

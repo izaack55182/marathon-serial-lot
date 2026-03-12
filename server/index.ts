@@ -38,7 +38,7 @@ app.use('*', async (c, next) => {
 app.use('*', secureHeadersMiddleware)
 app.use('*', rateLimitMiddleware)
 
-app.use('*', poweredBy({ serverName: 'CODENITY' }))
+app.use('*', poweredBy({ serverName: 'Marathon' }))
 
 // No indexing if configured
 app.use(

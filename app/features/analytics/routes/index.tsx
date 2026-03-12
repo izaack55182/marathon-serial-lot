@@ -99,12 +99,11 @@ export default function Analytics() {
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
-	const origin = data?.origin ?? 'https://codenity-stack.pages.dev'
-
+	const origin = data?.origin ?? 'https://marathon-serial-lot.pages.dev'
 	return getMeta({
-		title: 'Analytics',
-		description: 'Métricas y rendimiento en Codenity Stack.',
 		origin,
+		title: 'Analíticas',
+		description: 'Métricas y rendimiento en Marathon.',
 		noIndex: true,
 	})
 }

@@ -94,11 +94,11 @@ export default function Customers() {
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
-	const origin = data?.origin ?? 'https://codenity-stack.pages.dev'
+	const origin = data?.origin ?? 'https://marathon-serial-lot.pages.dev'
 
 	return getMeta({
 		title: 'CRM',
-		description: 'Gestión de clientes en Codenity Stack.',
+		description: 'Gestión de clientes en Marathon.',
 		origin,
 		noIndex: true,
 	})
