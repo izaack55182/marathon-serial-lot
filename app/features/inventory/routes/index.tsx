@@ -53,7 +53,14 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	const ACUMATICA_PASSWORD = env.ACUMATICA_PASSWORD
 
 	const url = new URL(request.url)
-	const q = url.searchParams.get('q') || 'QRC04269'
+	const q = url.searchParams.get('q')
+
+	if (!q) {
+		return data({
+			items: [],
+			origin: new URL(request.url).origin
+		})
+	}
 
 	if (!ACUMATICA_USERNAME || !ACUMATICA_PASSWORD) {
 		console.warn("⚠️ ACUMATICA_USERNAME o ACUMATICA_PASSWORD no están definidos")
@@ -193,6 +200,28 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 		}
 	}, [currentQuery, items.length])
 
+	const EmptyState = () => (
+		<div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in zoom-in-95 duration-500">
+			<div className="bg-primary/5 p-6 rounded-full mb-6">
+				<Icon name="search" className="size-12 text-primary/40 stroke-[1.5]" />
+			</div>
+			<h3 className="text-2xl font-bold text-foreground mb-2">Comience una consulta</h3>
+			<p className="text-muted-foreground max-w-[400px] mb-8">
+				Ingrese un código de recepción de Acumatica para visualizar los detalles y generar códigos QR.
+			</p>
+			<Button 
+				variant="outline" 
+				onClick={() => setOpen(true)}
+				className="rounded-xl px-8 h-12 border-muted-foreground/20 hover:bg-muted/50"
+			>
+				<kbd className="mr-2 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+					<span className="text-xs">⌘</span>K
+				</kbd>
+				Presione para buscar
+			</Button>
+		</div>
+	)
+
 	return (
 		<div className="flex flex-col min-h-screen bg-background">
 			{/* Command Dialog */}
@@ -287,88 +316,94 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 			</div>
 
 			{/* Table Content Section */}
-			<div className="p-6 lg:p-10 -mt-6">
-				<div className="max-w-[1600px] mx-auto">
-					<Card className="border-none shadow-2xl shadow-foreground/5 overflow-hidden bg-card/80 backdrop-blur-md rounded-[24px]">
-						<div className="overflow-x-auto">
-							<Table>
-								<TableHeader className="bg-muted/30 border-b border-border/50">
-									<TableRow className="hover:bg-transparent border-none">
-										<TableHead className="w-[60px] py-5 px-6 text-center">
-											<Checkbox
-												className="rounded-md h-4.5 w-4.5"
-												checked={isAllSelected || (isSomeSelected ? 'indeterminate' : false)}
-												onCheckedChange={toggleAll}
-											/>
-										</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground py-5">Lote / Serie</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Node Inv.</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Sucursal</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Almacén</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4 text-center">Ubicación</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4 text-center">Cant. Recibir</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">UM</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Descripción</TableHead>
-										<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground text-center w-[80px]">Acción</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{items.map((item) => {
-										const isSelected = !!selectedRows[item.LoteSerie]
-										return (
-											<TableRow
-												key={item.LoteSerie}
-												className={cn(
-													"group border-b border-border/40 transition-all cursor-pointer",
-													isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/30"
-												)}
-												onClick={() => toggleRow(item.LoteSerie)}
-											>
-												<TableCell className="py-5 px-6 text-center" onClick={(e) => e.stopPropagation()}>
-													<Checkbox
-														className="rounded-md h-4.5 w-4.5"
-														checked={isSelected}
-														onCheckedChange={() => toggleRow(item.LoteSerie)}
-													/>
-												</TableCell>
-												<TableCell className="py-5 px-4">
-													<span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-tight uppercase font-mono">{item.LoteSerie}</span>
-												</TableCell>
-												<TableCell className="text-[11px] font-bold text-muted-foreground px-4 uppercase tracking-tighter whitespace-nowrap">{item.NodeInventario}</TableCell>
-												<TableCell className="text-[11px] font-bold text-muted-foreground px-4 uppercase tracking-tighter whitespace-nowrap">{item.Sucursal}</TableCell>
-												<TableCell className="text-[11px] font-bold text-foreground/70 px-4 uppercase truncate">{item.Almacén}</TableCell>
-												<TableCell className="text-[11px] font-bold text-foreground/70 px-4 text-center uppercase tracking-tighter">
-													<code className="bg-muted px-2 py-0.5 rounded">{item.Ubicación}</code>
-												</TableCell>
-												<TableCell className="text-center px-4 font-mono font-bold text-primary">
-													{item.CantidadaRecibir}
-												</TableCell>
-												<TableCell className="text-[11px] font-bold text-foreground tracking-tight px-4 text-center">
-													{item.UM}
-												</TableCell>
-												<TableCell className="text-[11px] font-medium text-muted-foreground/80 px-4 whitespace-nowrap">
-													{item.Type_3}
-												</TableCell>
-												<TableCell className="text-center px-0">
-													<Button
-														variant="ghost"
-														size="icon"
-														className="size-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
-														onClick={(e) => {
-															e.stopPropagation();
-															viewItemDetails(item);
-														}}
-													>
-														<Icon name="info" className="size-4" />
-													</Button>
-												</TableCell>
-											</TableRow>
-										)
-									})}
-								</TableBody>
-							</Table>
-						</div>
-					</Card>
+			<div className="p-6 lg:p-10 -mt-6 flex-1">
+				<div className="max-w-[1600px] mx-auto h-full">
+					{!currentQuery ? (
+						<Card className="border-none shadow-2xl shadow-foreground/5 overflow-hidden bg-card/80 backdrop-blur-md rounded-[24px] h-full flex items-center justify-center min-h-[400px]">
+							<EmptyState />
+						</Card>
+					) : (
+						<Card className="border-none shadow-2xl shadow-foreground/5 overflow-hidden bg-card/80 backdrop-blur-md rounded-[24px]">
+							<div className="overflow-x-auto">
+								<Table>
+									<TableHeader className="bg-muted/30 border-b border-border/50">
+										<TableRow className="hover:bg-transparent border-none">
+											<TableHead className="w-[60px] py-5 px-6 text-center">
+												<Checkbox
+													className="rounded-md h-4.5 w-4.5"
+													checked={isAllSelected || (isSomeSelected ? 'indeterminate' : false)}
+													onCheckedChange={toggleAll}
+												/>
+											</TableHead>
+											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground py-5">Lote / Serie</TableHead>
+											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Node Inv.</TableHead>
+											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Sucursal</TableHead>
+											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Almacén</TableHead>
+											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4 text-center">Ubicación</TableHead>
+											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4 text-center">Cant. Recibir</TableHead>
+											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">UM</TableHead>
+											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Descripción</TableHead>
+											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground text-center w-[80px]">Acción</TableHead>
+										</TableRow>
+									</TableHeader>
+									<TableBody>
+										{items.map((item) => {
+											const isSelected = !!selectedRows[item.LoteSerie]
+											return (
+												<TableRow
+													key={item.LoteSerie}
+													className={cn(
+														"group border-b border-border/40 transition-all cursor-pointer",
+														isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/30"
+													)}
+													onClick={() => toggleRow(item.LoteSerie)}
+												>
+													<TableCell className="py-5 px-6 text-center" onClick={(e) => e.stopPropagation()}>
+														<Checkbox
+															className="rounded-md h-4.5 w-4.5"
+															checked={isSelected}
+															onCheckedChange={() => toggleRow(item.LoteSerie)}
+														/>
+													</TableCell>
+													<TableCell className="py-5 px-4">
+														<span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-tight uppercase font-mono">{item.LoteSerie}</span>
+													</TableCell>
+													<TableCell className="text-[11px] font-bold text-muted-foreground px-4 uppercase tracking-tighter whitespace-nowrap">{item.NodeInventario}</TableCell>
+													<TableCell className="text-[11px] font-bold text-muted-foreground px-4 uppercase tracking-tighter whitespace-nowrap">{item.Sucursal}</TableCell>
+													<TableCell className="text-[11px] font-bold text-foreground/70 px-4 uppercase truncate">{item.Almacén}</TableCell>
+													<TableCell className="text-[11px] font-bold text-foreground/70 px-4 text-center uppercase tracking-tighter">
+														<code className="bg-muted px-2 py-0.5 rounded">{item.Ubicación}</code>
+													</TableCell>
+													<TableCell className="text-center px-4 font-mono font-bold text-primary">
+														{item.CantidadaRecibir}
+													</TableCell>
+													<TableCell className="text-[11px] font-bold text-foreground tracking-tight px-4 text-center">
+														{item.UM}
+													</TableCell>
+													<TableCell className="text-[11px] font-medium text-muted-foreground/80 px-4 whitespace-nowrap">
+														{item.Type_3}
+													</TableCell>
+													<TableCell className="text-center px-0">
+														<Button
+															variant="ghost"
+															size="icon"
+															className="size-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+															onClick={(e) => {
+																e.stopPropagation();
+																viewItemDetails(item);
+															}}
+														>
+															<Icon name="info" className="size-4" />
+														</Button>
+													</TableCell>
+												</TableRow>
+											)
+										})}
+									</TableBody>
+								</Table>
+							</div>
+						</Card>
+					)}
 				</div>
 			</div>
 			{/* Item Details Sheet with QR */}
