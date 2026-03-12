@@ -116,6 +116,31 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 	const [open, setOpen] = React.useState(false)
 	const [searchValue, setSearchValue] = React.useState('')
 	const currentQuery = searchParams.get('q') || ''
+	const [recentSearches, setRecentSearches] = React.useState<string[]>([])
+
+	// Cargar historial al montar
+	React.useEffect(() => {
+		const saved = localStorage.getItem('recent_inventory_searches')
+		if (saved) {
+			try {
+				setRecentSearches(JSON.parse(saved))
+			} catch (e) {
+				console.error('Error loading history', e)
+			}
+		}
+	}, [])
+
+	const addToHistory = (query: string) => {
+		const trimmed = query.trim()
+		if (!trimmed) return
+
+		setRecentSearches(prev => {
+			const filtered = prev.filter(s => s !== trimmed)
+			const updated = [trimmed, ...filtered].slice(0, 5) // Limitamos a 5
+			localStorage.setItem('recent_inventory_searches', JSON.stringify(updated))
+			return updated
+		})
+	}
 
 	const [selectedRows, setSelectedRows] = React.useState<Record<string, boolean>>({})
 
@@ -149,13 +174,13 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 
 	React.useEffect(() => {
 		const down = (e: KeyboardEvent) => {
-			if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+			if ((e.key?.toLowerCase() === 'k') && (e.metaKey || e.ctrlKey)) {
 				e.preventDefault()
 				setOpen((open) => !open)
 			}
 		}
-		document.addEventListener('keydown', down)
-		return () => document.removeEventListener('keydown', down)
+		window.addEventListener('keydown', down)
+		return () => window.removeEventListener('keydown', down)
 	}, [])
 
 	// Notificar si no hay resultados
@@ -179,12 +204,32 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 					onKeyDown={(e) => {
 						if (e.key === 'Enter' && searchValue.trim()) {
 							setOpen(false)
+							addToHistory(searchValue.trim())
 							navigate(`?q=${searchValue.trim()}`)
 						}
 					}}
 				/>
 				<CommandList>
 					<CommandEmpty>Presione Enter para buscar "{searchValue}" en Acumatica.</CommandEmpty>
+					
+					{recentSearches.length > 0 && (
+						<CommandGroup heading="Búsquedas recientes">
+							{recentSearches.map((s) => (
+								<CommandItem 
+									key={s} 
+									onSelect={() => {
+										setOpen(false)
+										setSearchValue(s)
+										navigate(`?q=${s}`)
+									}}
+								>
+									<Icon name="refresh-ccw" className="mr-2 h-4 w-4 text-muted-foreground" />
+									<span>{s}</span>
+								</CommandItem>
+							))}
+						</CommandGroup>
+					)}
+
 					<CommandGroup heading="Artículos">
 						{items.map((item) => (
 							<CommandItem key={item.LoteSerie} onSelect={() => setOpen(false)}>
@@ -231,9 +276,9 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 									const selectedItemsData = items.filter(i => selectedRows[i.LoteSerie])
 									generateInventoryPDF(selectedItemsData)
 								}}
-								className="bg-primary hover:bg-primary/90 active:scale-95 active:bg-primary/80 text-white rounded-xl h-11 px-6 shadow-lg shadow-primary/20 transition-all font-bold text-xs uppercase tracking-wider animate-in fade-in slide-in-from-right-4"
+								className="bg-primary hover:bg-primary/90 active:scale-95 active:bg-primary/80 text-primary-foreground rounded-xl h-11 px-6 shadow-lg shadow-primary/20 transition-all font-bold text-xs uppercase tracking-wider animate-in fade-in slide-in-from-right-4"
 							>
-								<Icon name="file-down" className="mr-2 size-4 text-foreground" />
+								<Icon name="file-down" className="mr-2 size-4" />
 								Exportar PDF ({Object.values(selectedRows).filter(Boolean).length})
 							</Button>
 						)}
