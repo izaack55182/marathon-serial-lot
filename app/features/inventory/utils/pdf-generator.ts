@@ -55,14 +55,14 @@ export async function generateInventoryPDF(selectedItems: SAPItem[]) {
         doc.setFontSize(14);
         doc.setTextColor(200, 16, 46);
         doc.setFont("helvetica", "bold");
-        doc.text(`LT: ${item.LoteSerie}`, pageWidth / 2, cardY + 12, { align: "center" });
+        doc.text(`LT-${item.LoteSerie}`, pageWidth / 2, cardY + 12, { align: "center" });
 
         // 4. Generar QR Code
         const qrInstance = new (QRCodeStyling as any)({
             width: 600,
             height: 600,
             type: "canvas",
-            data: `LT:${item.LoteSerie}`,
+            data: `LT-${item.LoteSerie}`,
             margin: 0,
             dotsOptions: { color: "#c8102e", type: "rounded" },
             backgroundOptions: { color: "#ffffff" },
