@@ -52,7 +52,7 @@ export async function generateInventoryPDF(selectedItems: SAPItem[]) {
             cornersSquareOptions: { color: "#000000", type: "extra-rounded" },
             imageOptions: {
                 hideBackgroundDots: true,
-                imageSize: 0.3,
+                imageSize: 0.49, // Logo más grande y visible
                 margin: 2
             },
             image: "/images/logo/marathon-group-logo.png",
@@ -82,7 +82,7 @@ export async function generateInventoryPDF(selectedItems: SAPItem[]) {
 
         // Lote Principal (Ajuste de tamaño dinámico para evitar cortes)
         const loteText = `LT-${item.LoteSerie}`;
-        let loteFontSize = 14; 
+        let loteFontSize = 14;
         if (loteText.length > 15) loteFontSize = 11;
         if (loteText.length > 20) loteFontSize = 9;
         if (loteText.length > 25) loteFontSize = 7;
