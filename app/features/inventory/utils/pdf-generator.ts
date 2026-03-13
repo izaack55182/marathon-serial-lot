@@ -12,106 +12,110 @@ export async function generateInventoryPDF(selectedItems: SAPItem[]) {
     const Mod = await import("qr-code-styling");
     const QRCodeStyling = Mod.default || (Mod as any).QRCodeStyling || Mod;
 
+    // MEDIDAS REALES PARA ETIQUETA ZEBRA 4x2 PULGADAS
+    const labelWidth = 101.6;
+    const labelHeight = 50.8;
+
     const doc = new jsPDF({
-        orientation: "p",
+        orientation: "l",
         unit: "mm",
-        format: "a4",
+        format: [labelWidth, labelHeight],
     });
-
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-
-    // Configuración para etiquetas tipo sticker (ajustado a 2 por página)
-    const qrSize = 80;
-    const marginX = (pageWidth - qrSize) / 2; // Centrado horizontal
-    const cardHeight = pageHeight / 2;
 
     for (let i = 0; i < selectedItems.length; i++) {
         const item = selectedItems[i];
         if (!item) continue;
 
-        if (i > 0 && i % 2 === 0) {
-            doc.addPage();
-        }
+        if (i > 0) doc.addPage([labelWidth, labelHeight], "l");
 
-        // Dimensiones de la "tarjeta" de la etiqueta
-        const cardWidth = 160;
-        const cardHeightLocal = 120;
-        const cardX = (pageWidth - cardWidth) / 2;
-        const cardY = (i % 2) * (pageHeight / 2) + (pageHeight / 2 - cardHeightLocal) / 2;
+        // --- CÁLCULO DE ESPACIOS PARA MAXIMIZAR ALTURA ---
+        // QR de 46mm casi llena los 50.8mm de la etiqueta
+        const qrSize = 46;
+        const textAreaWidth = 48;
+        const gap = 3;
+        const totalContentWidth = qrSize + gap + textAreaWidth;
 
-        // 1. Fondo y Borde de la Tarjeta
-        doc.setDrawColor(230, 230, 230);
-        doc.setLineWidth(0.5);
-        doc.setFillColor(255, 255, 255);
-        // @ts-ignore - roundedRect es parte de jspdf pero a veces no está en tipos
-        doc.roundedRect(cardX, cardY, cardWidth, cardHeightLocal, 4, 4, "FD");
+        // startX para centrar el bloque horizontalmente en la etiqueta
+        const startX = (labelWidth - totalContentWidth) / 2;
+        // startY mínimo para cubrir casi toda la altura
+        const startY = 2.5;
 
-        // 2. Acento superior (Marca Marathon)
-        doc.setFillColor(200, 16, 46); // Maratón Red
-        doc.rect(cardX, cardY, cardWidth, 3, "F");
-
-        // 3. Texto de Identificación (Lote/Serie) arriba
-        doc.setFontSize(14);
-        doc.setTextColor(200, 16, 46);
-        doc.setFont("helvetica", "bold");
-        doc.text(`LT-${item.LoteSerie}`, pageWidth / 2, cardY + 12, { align: "center" });
-
-        // 4. Generar QR Code
+        // 1. Generar QR Code (Resolución para 203dpi)
         const qrInstance = new (QRCodeStyling as any)({
             width: 600,
             height: 600,
             type: "canvas",
             data: `LT-${item.LoteSerie}`,
             margin: 0,
-            dotsOptions: { color: "#c8102e", type: "rounded" },
+            dotsOptions: { color: "#000000", type: "rounded" },
             backgroundOptions: { color: "#ffffff" },
-            cornersSquareOptions: { color: "#c8102e", type: "extra-rounded" },
-            qrOptions: { typeNumber: 0, mode: "Byte", errorCorrectionLevel: "H" },
-            imageOptions: { hideBackgroundDots: true, imageSize: 0.4 },
+            cornersSquareOptions: { color: "#000000", type: "extra-rounded" },
+            imageOptions: {
+                hideBackgroundDots: true,
+                imageSize: 0.3,
+                margin: 2
+            },
             image: "/images/logo/marathon-group-logo.png",
         });
 
         const tempDiv = document.createElement("div");
         qrInstance.append(tempDiv);
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Tiempo de espera para renderizado del canvas
+        await new Promise(resolve => setTimeout(resolve, 650));
 
         const canvas = tempDiv.querySelector("canvas") as HTMLCanvasElement;
         const qrImageData = canvas.toDataURL("image/png");
 
-        // 5. Agregar el QR centrado
-        const qrX = (pageWidth - qrSize) / 2;
-        const qrY = cardY + 18;
-        doc.addImage(qrImageData, "PNG", qrX, qrY, qrSize, qrSize);
+        // 2. Insertar QR Maximizado
+        doc.addImage(qrImageData, "PNG", startX, startY, qrSize, qrSize);
 
-        // 6. Pie de etiqueta con Metadatos estructurados
-        const footerY = qrY + qrSize + 8;
-        doc.setDrawColor(240, 240, 240);
-        doc.line(cardX + 10, footerY - 4, cardX + cardWidth - 10, footerY - 4); // Línea decorativa
+        // 3. Columna de Datos a la derecha (Fuentes más grandes)
+        const textX = startX + qrSize + gap;
+        let currentY = startY + 6;
 
+        // Título Identificador
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
         doc.setFont("helvetica", "bold");
+        doc.text("ID DE INVENTARIO", textX, currentY);
 
-        // Tres columnas para los metadatos
-        const col1 = cardX + (cardWidth / 6);
-        const col2 = cardX + (cardWidth / 2);
-        const col3 = cardX + (cardWidth * 5 / 6);
+        // Lote Principal (Ajuste de tamaño dinámico para evitar cortes)
+        const loteText = `LT-${item.LoteSerie}`;
+        let loteFontSize = 14; 
+        if (loteText.length > 15) loteFontSize = 11;
+        if (loteText.length > 20) loteFontSize = 9;
+        if (loteText.length > 25) loteFontSize = 7;
 
-        doc.text("SUCURSAL", col1, footerY, { align: "center" });
-        doc.text("ALMACÉN", col2, footerY, { align: "center" });
-        doc.text("UBICACIÓN", col3, footerY, { align: "center" });
-
-        doc.setFontSize(10);
+        doc.setFontSize(loteFontSize);
         doc.setTextColor(0, 0, 0);
-        doc.setFont("helvetica", "normal");
-        doc.text(item.Sucursal || "N/A", col1, footerY + 6, { align: "center" });
-        doc.text(item.Almacén || "N/A", col2, footerY + 6, { align: "center" });
-        doc.text(item.Ubicación || "N/A", col3, footerY + 6, { align: "center" });
+        doc.setFont("helvetica", "bold");
+        doc.text(loteText, textX, currentY + 7);
+
+        // Función auxiliar para dibujar campos
+        const drawField = (label: string, value: string, y: number) => {
+            doc.setFontSize(9);
+            doc.setTextColor(100, 100, 100);
+            doc.setFont("helvetica", "bold");
+            doc.text(label, textX, y);
+
+            doc.setFontSize(11); // Tamaño robusto para visibilidad en almacén
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(0, 0, 0);
+
+            const wrappedText = doc.splitTextToSize(value || "N/A", textAreaWidth);
+            doc.text(wrappedText, textX, y + 4.5);
+
+            // Retorna la posición Y para el siguiente campo dejando padding
+            return y + (wrappedText.length > 1 ? 14 : 12);
+        };
+
+        currentY += 17;
+        currentY = drawField("SUCURSAL", item.Sucursal, currentY);
+        currentY = drawField("ALMACÉN / UBICACIÓN", `${item.Almacén} - ${item.Ubicación}`, currentY);
 
         tempDiv.remove();
     }
 
-    doc.save(`Stickers-QR-${new Date().getTime()}.pdf`);
+    doc.save(`Zebra-Lote-Max-4x2.pdf`);
 }
