@@ -4,15 +4,16 @@ interface SAPItem {
     LoteSerie: string;
     Type_3: string;
     Sucursal: string;
+    NodeInventario: string;
     Almacén: string;
     Ubicación: string;
+    CantidadaRecibir?: number;
+    UM?: string;
 }
 
 export async function generateInventoryPDF(selectedItems: SAPItem[]) {
     const Mod = await import("qr-code-styling");
     const QRCodeStyling = Mod.default || (Mod as any).QRCodeStyling || Mod;
-
-    // MEDIDAS REALES PARA ETIQUETA ZEBRA 4x2 PULGADAS
     const labelWidth = 101.6;
     const labelHeight = 50.8;
 
@@ -28,19 +29,15 @@ export async function generateInventoryPDF(selectedItems: SAPItem[]) {
 
         if (i > 0) doc.addPage([labelWidth, labelHeight], "l");
 
-        // --- CÁLCULO DE ESPACIOS PARA MAXIMIZAR ALTURA ---
-        // QR de 46mm casi llena los 50.8mm de la etiqueta
-        const qrSize = 46;
-        const textAreaWidth = 48;
+        const qrSize = 42;
+        const textAreaWidth = 52;
         const gap = 3;
         const totalContentWidth = qrSize + gap + textAreaWidth;
+        const contentHeight = 44;
 
-        // startX para centrar el bloque horizontalmente en la etiqueta
         const startX = (labelWidth - totalContentWidth) / 2;
-        // startY mínimo para cubrir casi toda la altura
-        const startY = 2.5;
+        const startY = (labelHeight - contentHeight) / 2;
 
-        // 1. Generar QR Code (Resolución para 203dpi)
         const qrInstance = new (QRCodeStyling as any)({
             width: 600,
             height: 600,
@@ -52,7 +49,7 @@ export async function generateInventoryPDF(selectedItems: SAPItem[]) {
             cornersSquareOptions: { color: "#000000", type: "extra-rounded" },
             imageOptions: {
                 hideBackgroundDots: true,
-                imageSize: 0.49, // Logo más grande y visible
+                imageSize: 0.49,
                 margin: 2
             },
             image: "/images/logo/marathon-group-logo.png",
@@ -61,7 +58,6 @@ export async function generateInventoryPDF(selectedItems: SAPItem[]) {
         const tempDiv = document.createElement("div");
         qrInstance.append(tempDiv);
 
-        // Tiempo de espera para renderizado del canvas
         await new Promise(resolve => setTimeout(resolve, 650));
 
         const canvas = tempDiv.querySelector("canvas") as HTMLCanvasElement;
@@ -70,52 +66,53 @@ export async function generateInventoryPDF(selectedItems: SAPItem[]) {
         // 2. Insertar QR Maximizado
         doc.addImage(qrImageData, "PNG", startX, startY, qrSize, qrSize);
 
-        // 3. Columna de Datos a la derecha (Fuentes más grandes)
         const textX = startX + qrSize + gap;
-        let currentY = startY + 6;
+        let currentY = startY + 3;
 
-        // Título Identificador
-        doc.setFontSize(10);
+        doc.setFontSize(7.5);
         doc.setTextColor(100, 100, 100);
         doc.setFont("helvetica", "bold");
-        doc.text("ID DE INVENTARIO", textX, currentY);
+        doc.text("LOTE/SERIE: ", textX, currentY);
 
-        // Lote Principal (Ajuste de tamaño dinámico para evitar cortes)
         const loteText = `LT-${item.LoteSerie}`;
-        let loteFontSize = 14;
+        let loteFontSize = 13;
         if (loteText.length > 15) loteFontSize = 11;
         if (loteText.length > 20) loteFontSize = 9;
-        if (loteText.length > 25) loteFontSize = 7;
 
         doc.setFontSize(loteFontSize);
         doc.setTextColor(0, 0, 0);
         doc.setFont("helvetica", "bold");
-        doc.text(loteText, textX, currentY + 7);
+        doc.text(loteText, textX, currentY + 6);
 
-        // Función auxiliar para dibujar campos
         const drawField = (label: string, value: string, y: number) => {
-            doc.setFontSize(9);
+            doc.setFontSize(8);
             doc.setTextColor(100, 100, 100);
             doc.setFont("helvetica", "bold");
             doc.text(label, textX, y);
 
-            doc.setFontSize(11); // Tamaño robusto para visibilidad en almacén
+            doc.setFontSize(10.5);
             doc.setFont("helvetica", "normal");
             doc.setTextColor(0, 0, 0);
 
             const wrappedText = doc.splitTextToSize(value || "N/A", textAreaWidth);
             doc.text(wrappedText, textX, y + 4.5);
 
-            // Retorna la posición Y para el siguiente campo dejando padding
-            return y + (wrappedText.length > 1 ? 14 : 12);
+            // Espaciado generoso
+            return y + (wrappedText.length > 1 ? 13 : 11);
         };
 
-        currentY += 17;
+        currentY += 14.5;
+        // 2. SUCURSAL
         currentY = drawField("SUCURSAL", item.Sucursal, currentY);
-        currentY = drawField("ALMACÉN / UBICACIÓN", `${item.Almacén} - ${item.Ubicación}`, currentY);
+
+        // 3. No. INVENTARIO
+        currentY = drawField("No. INVENTARIO", item.NodeInventario, currentY);
+
+        // 4. ALMACÉN / UBICACIÓN
+        drawField("ALMACÉN / UBICACIÓN", `${item.Almacén} - ${item.Ubicación}`, currentY);
 
         tempDiv.remove();
     }
 
-    doc.save(`Zebra-Lote-Max-4x2.pdf`);
+    doc.save(`Etiquetas.pdf`);
 }

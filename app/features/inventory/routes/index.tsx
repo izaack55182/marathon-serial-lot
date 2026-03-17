@@ -66,7 +66,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	}
 
 	if (!ACUMATICA_USERNAME || !ACUMATICA_PASSWORD) {
-		console.warn("⚠️ ACUMATICA_USERNAME o ACUMATICA_PASSWORD no están definidos")
 		return data({
 			items: [],
 			origin: new URL(request.url).origin
@@ -339,7 +338,7 @@ export default function ConsultasPage({ loaderData }: Route.ComponentProps) {
 												/>
 											</TableHead>
 											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground py-5">Lote / Serie</TableHead>
-											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Node Inv.</TableHead>
+											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">No. Inv</TableHead>
 											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Sucursal</TableHead>
 											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4">Almacén</TableHead>
 											<TableHead className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-4 text-center">Ubicación</TableHead>
